@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1117">
+<title>PCP XPRO — Planejamento de Produção</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root{--bg:#0f1117;--surface:#1a1d27;--surface2:#222638;--border:#2e3350;--accent:#7c5cfc;--danger:#f74f6a;--warn:#f7a84f;--ok:#4fcf8e;--text:#e8eaf6;--muted:#7c82a8;--font:'Segoe UI',system-ui,-apple-system,Roboto,sans-serif}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;padding-bottom:40px;-webkit-tap-highlight-color:transparent}
+  header{background:linear-gradient(135deg,#1a1d27,#1e1a2e);border-bottom:1px solid var(--border);padding:14px 16px;position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;gap:10px}
+  header h1{font-size:17px;font-weight:800;letter-spacing:.2px}
+  header p{font-size:11px;color:var(--muted);margin-top:2px;display:flex;align-items:center}
+  .sync-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block;margin-right:6px;transition:background .3s}
+  .sync-dot.ok{background:var(--ok)}.sync-dot.off{background:var(--danger)}
+  .icon-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:10px;width:40px;height:40px;font-size:18px;cursor:pointer;flex-shrink:0}
+  main{padding:12px 14px;max-width:720px;margin:0 auto}
+  .banner{border-radius:10px;padding:10px 12px;font-size:12.5px;line-height:1.4;margin-bottom:10px;border:1px solid}
+  .banner.err{background:rgba(247,79,106,.10);border-color:rgba(247,79,106,.35);color:#ffc2cc}
+  .banner.info{background:rgba(124,92,252,.10);border-color:rgba(124,92,252,.35);color:#d6ccff}
+  .chips{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+  .chip{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:9px 4px;text-align:center;cursor:pointer;color:var(--text);font-family:inherit}
+  .chip .n{font-size:22px;font-weight:900;line-height:1.1}
+  .chip .l{font-size:10.5px;color:var(--muted);margin-top:2px;font-weight:600}
+  .chip.hoje .n{color:var(--danger)}.chip.amanha .n{color:var(--warn)}.chip.ok .n{color:var(--ok)}.chip.nodata .n{color:var(--muted)}
+  .chip.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+  .toolbar{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+  .toolbar select{flex:1;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:9px 10px;font-size:13px;font-family:inherit}
+  .toolbar .todos{background:var(--surface);color:var(--muted);border:1px solid var(--border);border-radius:10px;padding:9px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
+  .toolbar .todos.active{color:var(--accent);border-color:var(--accent)}
+  .info{font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.5}
+  .card{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--border);border-radius:12px;padding:12px 13px;margin-bottom:9px;cursor:pointer}
+  .card.st-hoje{border-left-color:var(--danger)}.card.st-amanha{border-left-color:var(--warn)}.card.st-ok{border-left-color:var(--ok)}
+  .row1{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+  .nome{font-size:14.5px;font-weight:700;line-height:1.3}
+  .fam{font-size:11px;color:var(--muted);margin-top:1px}
+  .badge{font-size:11px;font-weight:800;padding:4px 8px;border-radius:20px;white-space:nowrap;flex-shrink:0}
+  .badge.hoje{background:rgba(247,79,106,.16);color:var(--danger)}
+  .badge.amanha{background:rgba(247,168,79,.16);color:var(--warn)}
+  .badge.ok{background:rgba(79,207,142,.14);color:var(--ok)}
+  .badge.parado,.badge.nodata{background:var(--surface2);color:var(--muted)}
+  .big{font-size:24px;font-weight:900;margin-top:8px;line-height:1.1}
+  .big small{font-size:12px;font-weight:600;color:var(--muted);margin-left:4px}
+  .st-hoje .big{color:var(--danger)}.st-amanha .big{color:var(--warn)}.st-ok .big{color:var(--text)}
+  .falta{font-size:12px;color:#ffc2cc;margin-top:5px;font-weight:600}
+  .meta{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--muted);margin-top:7px}
+  .meta b{color:var(--text);font-weight:700}
+  .aviso{font-size:11.5px;color:var(--warn);margin-top:6px}
+  .detail{margin-top:10px;border-top:1px dashed var(--border);padding-top:8px;display:none}
+  .card.open .detail{display:block}
+  .detail table{width:100%;border-collapse:collapse;font-size:12px}
+  .detail th{text-align:left;color:var(--muted);font-weight:600;padding:3px 0}
+  .detail td{padding:3px 0;border-top:1px solid rgba(46,51,80,.5)}
+  .detail td.num,.detail th.num{text-align:right}
+  .neg{color:var(--danger)}.pos{color:var(--ok)}.fora{color:var(--muted);font-style:italic}
+  .detail .nota{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.4}
+  .empty{text-align:center;color:var(--muted);font-size:13px;padding:40px 10px}
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;justify-content:center;z-index:200}
+  .overlay.open{display:flex}
+  .sheet{background:var(--surface);border:1px solid var(--border);border-radius:16px 16px 0 0;padding:18px 16px 24px;width:100%;max-width:520px}
+  .sheet h2{font-size:16px;margin-bottom:12px}
+  .field{margin-bottom:12px}
+  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;font-weight:600}
+  .field input{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px 12px;font-size:16px;font-family:inherit}
+  .field .hint{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.4}
+  .btns{display:flex;gap:8px;margin-top:6px}
+  .btn{flex:1;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+  .btn.primary{background:var(--accent);color:#fff}.btn.sec{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#2a2f48;color:var(--text);border:1px solid var(--border);padding:10px 16px;border-radius:10px;font-size:13px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:300}
+  .toast.show{opacity:1}
+</style>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+</head>
+<body>
+<header>
+  <div>
+    <h1>📈 PCP · Planejamento</h1>
+    <p><span id="syncDot" class="sync-dot"></span><span id="syncText">Conectando…</span></p>
+  </div>
+  <button class="icon-btn" id="btnConfig" aria-label="Configurações">⚙️</button>
+</header>
+
+<main>
+  <div id="banners"></div>
+
+  <div class="chips">
+    <button class="chip hoje" data-f="hoje"><div class="n" id="cHoje">–</div><div class="l">Produzir hoje</div></button>
+    <button class="chip amanha" data-f="amanha"><div class="n" id="cAmanha">–</div><div class="l">Amanhã</div></button>
+    <button class="chip ok" data-f="ok"><div class="n" id="cOk">–</div><div class="l">Em dia</div></button>
+    <button class="chip nodata" data-f="nodata"><div class="n" id="cNodata">–</div><div class="l">Sem cálculo</div></button>
+  </div>
+
+  <div class="toolbar">
+    <select id="selFamilia"><option value="">Todas as famílias</option></select>
+    <button class="todos active" id="btnTodos">Todos</button>
+  </div>
+
+  <div class="info" id="infoLine"></div>
+  <div id="lista"><div class="empty">Carregando dados do estoque…</div></div>
+</main>
+
+<div class="overlay" id="cfgOverlay">
+  <div class="sheet">
+    <h2>⚙️ Parâmetros</h2>
+    <div class="field">
+      <label for="cfgLead">Lead time de produção (dias)</label>
+      <input id="cfgLead" type="number" min="0" step="0.5" inputmode="decimal">
+      <div class="hint">Tempo entre começar a produzir e o produto estar disponível na Sede.</div>
+    </div>
+    <div class="field">
+      <label for="cfgAlvo">Estoque alvo depois de produzir (dias)</label>
+      <input id="cfgAlvo" type="number" min="0" step="1" inputmode="numeric">
+      <div class="hint">A quantidade sugerida cobre o lead time + estes dias de consumo.</div>
+    </div>
+    <div class="field">
+      <label for="cfgJanela">Média de consumo dos últimos (dias)</label>
+      <input id="cfgJanela" type="number" min="3" max="90" step="1" inputmode="numeric">
+    </div>
+    <div class="btns">
+      <button class="btn sec" id="cfgCancel">Cancelar</button>
+      <button class="btn primary" id="cfgSave">Salvar</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+
+/* ============================================================
+   CÁLCULO (funções puras — sem Firebase, sem tela)
+   ============================================================ */
+const PCP = (function () {
+  const DIA_MS = 86400000;
+  const pad = n => String(n).padStart(2, '0');
+
+  // Data local (do celular) no formato AAAA-MM-DD
+  function dayKey(ms) {
+    const d = new Date(ms);
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+  // Número inteiro do dia, para contar dias entre datas sem erro de fuso
+  function dayIndex(key) {
+    const p = String(key).split('-').map(Number);
+    return Math.round(Date.UTC(p[0], p[1] - 1, p[2]) / DIA_MS);
+  }
+  // Nome do produto -> chave válida no Firebase (sem . $ # [ ] /)
+  function encKey(name) {
+    return encodeURIComponent(String(name)).replace(/\./g, '%2E');
+  }
+  function decKey(k) {
+    try { return decodeURIComponent(k); } catch (e) { return k; }
+  }
+  function toArr(v) {
+    if (!v) return [];
+    return (Array.isArray(v) ? v : Object.values(v)).filter(Boolean);
+  }
+
+  // Pontos (produto, momento, saldo) a partir do Log e do saldo atual dos itens
+  function extractPoints(log, items) {
+    const pts = [];
+    toArr(log).forEach(e => {
+      if (!e || !e.name || !e.at || e.action === 'delete') return;
+      const v = Number(e.after);
+      const t = Date.parse(e.at);
+      if (!isFinite(v) || !isFinite(t)) return;
+      pts.push({ name: String(e.name), t: t, v: v });
+    });
+    toArr(items).forEach(it => {
+      if (!it || !it.name || !it.lastModified) return;
+      const t = Date.parse(it.lastModified);
+      if (!isFinite(t)) return;
+      pts.push({ name: String(it.name), t: t, v: Number(it.units) || 0 });
+    });
+    return pts;
+  }
+
+  // Junta os pontos no histórico diário (fica o último saldo de cada dia).
+  // hist = { chaveProduto: { 'AAAA-MM-DD': {v, t} } }. Retorna só o que mudou.
+  function mergePoints(hist, pts) {
+    const updates = {};
+    pts.forEach(p => {
+      const k = encKey(p.name), d = dayKey(p.t);
+      if (!hist[k]) hist[k] = {};
+      const cur = hist[k][d];
+      if (!cur || p.t > Number(cur.t)) {
+        hist[k][d] = { v: p.v, t: p.t };
+        updates[k + '/' + d] = { v: p.v, t: p.t };
+      }
+    });
+    return updates;
+  }
+
+  // Remove dias mais antigos que o limite. Retorna as remoções (null) para o Firebase.
+  function prune(hist, todayIdx, reterDias) {
+    const updates = {};
+    Object.keys(hist).forEach(k => {
+      Object.keys(hist[k] || {}).forEach(d => {
+        if (dayIndex(d) < todayIdx - reterDias) {
+          delete hist[k][d];
+          updates[k + '/' + d] = null;
+        }
+      });
+    });
+    return updates;
+  }
+
+  // Verifica se o Log perdeu registros desde a última vez que o app abriu
+  function checkGap(log, ultimoLogAt, logCap) {
+    const ts = toArr(log).map(e => Date.parse(e && e.at)).filter(isFinite);
+    if (!ts.length) return { oldest: null, newest: null, gap: null };
+    const oldest = Math.min.apply(null, ts), newest = Math.max.apply(null, ts);
+    const cheio = ts.length >= logCap;
+    const gap = (ultimoLogAt && cheio && oldest > Number(ultimoLogAt))
+      ? { from: Number(ultimoLogAt), to: oldest } : null;
+    return { oldest: oldest, newest: newest, gap: gap };
+  }
+
+  /* Análise de um produto.
+     days = { 'AAAA-MM-DD': {v, t} }  (saldo de fechamento de cada dia com atualização)
+     opts = { lead, alvo, janela, today (dayIndex), staleDias } */
+  function analyze(days, opts) {
+    const series = Object.keys(days || {}).sort().map(k => ({
+      k: k, i: dayIndex(k), v: Number(days[k].v) || 0, t: Number(days[k].t) || 0
+    }));
+    const r = { series: series, ints: [], status: 'nodata', qtd: 0, falta: 0 };
+    if (!series.length) { r.motivo = 'sem histórico'; return r; }
+
+    const last = series[series.length - 1];
+    r.saldo = last.v;
+    r.diasSemAtualizar = Math.max(0, opts.today - last.i);
+    r.stale = r.diasSemAtualizar > opts.staleDias;
+
+    for (let j = 1; j < series.length; j++) {
+      const a = series[j - 1], b = series[j], dd = b.i - a.i;
+      if (dd <= 0) continue;
+      r.ints.push({ from: a.k, to: b.k, endI: b.i, dias: dd, delta: a.v - b.v, valido: a.v - b.v >= 0 });
+    }
+    // Saldo subiu = dia de chegada: fica fora da média
+    const validos = r.ints.filter(x => x.valido);
+    let usados = validos.filter(x => x.endI > opts.today - opts.janela);
+    r.baseAntiga = false;
+    if (!usados.length && validos.length) { usados = validos; r.baseAntiga = true; }
+    usados.forEach(x => { x.usado = true; });
+
+    const somaC = usados.reduce((s, x) => s + x.delta, 0);
+    const somaD = usados.reduce((s, x) => s + x.dias, 0);
+    r.baseDias = somaD;
+    if (!somaD) {
+      r.motivo = series.length < 2 ? 'só 1 dia de saldo' : 'só entradas no período';
+      return r;
+    }
+    const rate = somaC / somaD;
+    r.consumo = rate;
+    r.poucaBase = somaD < 3;
+    r.estimado = Math.max(0, r.saldo - rate * r.diasSemAtualizar);
+
+    if (rate <= 0) { r.status = 'parado'; r.motivo = 'sem saída no período'; return r; }
+
+    const cob = r.estimado / rate;
+    r.cobertura = cob;
+    const folga = cob - opts.lead;            // dias que ainda dá para esperar antes de começar
+    let d;
+    if (folga < 1) { d = 0; r.status = 'hoje'; }
+    else if (folga < 2) { d = 1; r.status = 'amanha'; }
+    else { d = Math.floor(folga); r.status = 'ok'; }
+    r.iniciarEm = d;
+    const saldoNoInicio = Math.max(0, r.estimado - rate * d);
+    r.qtd = Math.max(0, Math.ceil(rate * (opts.lead + opts.alvo) - saldoNoInicio));
+    r.falta = r.status === 'hoje' ? Math.max(0, Math.ceil(rate * opts.lead - r.estimado)) : 0;
+    return r;
+  }
+
+  const ORDEM = { hoje: 0, amanha: 1, ok: 2, parado: 3, nodata: 4 };
+  function compare(a, b) {
+    const oa = ORDEM[a.r.status], ob = ORDEM[b.r.status];
+    if (oa !== ob) return oa - ob;
+    if (a.r.status === 'ok' && a.r.iniciarEm !== b.r.iniciarEm) return a.r.iniciarEm - b.r.iniciarEm;
+    const ca = a.r.cobertura == null ? Infinity : a.r.cobertura;
+    const cb = b.r.cobertura == null ? Infinity : b.r.cobertura;
+    if (ca !== cb) return ca - cb;
+    return a.name.localeCompare(b.name, 'pt-BR');
+  }
+
+  return { dayKey, dayIndex, encKey, decKey, toArr, extractPoints, mergePoints, prune, checkGap, analyze, compare, DIA_MS };
+})();
+window.PCP = PCP;
+
+/* ============================================================
+   CONFIGURAÇÃO E ESTADO
+   ============================================================ */
+const CFG_KEY = 'pcp_xpro_cfg_v1';
+const DEFAULT_CFG = { lead: 1, alvo: 7, janela: 14 };
+const STALE_DIAS = 7;      // aviso de contagem velha
+const RETER_DIAS = 180;    // histórico guardado
+const LOG_CAP = 200;       // limite do Log no app de produtos
+const HIST_PATH = 'planejamentoProdutos';
+
+function loadCfg() {
+  try {
+    const c = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
+    return {
+      lead: isFinite(c.lead) && c.lead >= 0 ? Number(c.lead) : DEFAULT_CFG.lead,
+      alvo: isFinite(c.alvo) && c.alvo >= 0 ? Number(c.alvo) : DEFAULT_CFG.alvo,
+      janela: isFinite(c.janela) && c.janela >= 3 ? Number(c.janela) : DEFAULT_CFG.janela
+    };
+  } catch (e) { return Object.assign({}, DEFAULT_CFG); }
+}
+function saveCfg(c) { try { localStorage.setItem(CFG_KEY, JSON.stringify(c)); } catch (e) {} }
+
+const S = {
+  cfg: loadCfg(),
+  items: null, log: null, hist: {}, meta: {},
+  histReady: false, writeBlocked: false, readBlocked: false, connErr: false,
+  gap: null, lastDataAt: null,
+  filtro: '', familia: '', abertos: new Set(),
+  rows: []
+};
+
+/* ============================================================
+   FORMATAÇÃO
+   ============================================================ */
+const fmtInt = n => Math.round(n).toLocaleString('pt-BR');
+const fmtDec = n => (n === 0 ? '0' : n < 10 ? n.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : fmtInt(n));
+const fmtDia = key => { const p = key.split('-'); return p[2] + '/' + p[1]; };
+const fmtDataMs = ms => new Date(ms).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+const fmtHora = ms => new Date(ms).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+function addDias(n) { const d = new Date(); d.setDate(d.getDate() + n); return fmtDataMs(d.getTime()); }
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function quando(dias) {
+  if (dias === 0) return 'hoje';
+  if (dias === 1) return 'ontem';
+  return 'há ' + dias + ' dias';
+}
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toast._t); toast._t = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+/* ============================================================
+   PROCESSAMENTO
+   ============================================================ */
+function processar() {
+  if (!S.histReady || S.items === null || S.log === null) return;
+  const todayIdx = PCP.dayIndex(PCP.dayKey(Date.now()));
+
+  // 1) Buraco no Log desde a última abertura?
+  const g = PCP.checkGap(S.log, S.meta.ultimoLogAt, LOG_CAP);
+  if (g.gap && !S.gap) S.gap = g.gap;
+
+  // 2) Copia Log + saldos atuais para o histórico diário
+  const upd = Object.assign(
+    PCP.mergePoints(S.hist, PCP.extractPoints(S.log, S.items)),
+    PCP.prune(S.hist, todayIdx, RETER_DIAS)
+  );
+  if (g.newest && (!S.meta.ultimoLogAt || g.newest > Number(S.meta.ultimoLogAt))) {
+    S.meta.ultimoLogAt = g.newest;
+    S.metaPendente = true;
+  }
+  gravar(upd);
+
+  // 3) Calcula cada produto
+  const opts = { lead: S.cfg.lead, alvo: S.cfg.alvo, janela: S.cfg.janela, today: todayIdx, staleDias: STALE_DIAS };
+  S.rows = PCP.toArr(S.items).filter(it => it && it.name).map(it => ({
+    name: String(it.name),
+    cat: it.cat || '',
+    k: PCP.encKey(it.name),
+    r: PCP.analyze(S.hist[PCP.encKey(it.name)], opts)
+  })).sort(PCP.compare);
+
+  render();
+}
+
+let gravando = Promise.resolve();
+function gravar(upd) {
+  if (S.writeBlocked || S.readBlocked) return;
+  const temDados = Object.keys(upd).length > 0;
+  const temMeta = !!S.metaPendente;
+  if (!temDados && !temMeta) return;
+  S.metaPendente = false;
+  const metaAt = S.meta.ultimoLogAt;
+  gravando = gravando.then(() => {
+    const p1 = temDados ? db.ref(HIST_PATH + '/diario').update(upd) : Promise.resolve();
+    return p1.then(() => temMeta
+      ? db.ref(HIST_PATH + '/meta').update({ ultimoLogAt: metaAt, sincronizadoEm: Date.now() })
+      : null);
+  }).catch(err => {
+    console.warn('Falha ao gravar histórico:', err && err.message);
+    S.writeBlocked = true;
+    renderBanners();
+  });
+}
+
+/* ============================================================
+   TELA
+   ============================================================ */
+function renderBanners() {
+  const b = [];
+  if (S.readBlocked || S.writeBlocked) {
+    b.push('<div class="banner err">⚠️ O histórico não está sendo salvo: falta a regra <b>planejamentoProdutos</b> nas regras do Firebase. Por enquanto o cálculo usa só o Log atual (últimas 200 atualizações).</div>');
+  }
+  if (S.connErr) {
+    b.push('<div class="banner err">⚠️ Não foi possível ler o estoque de produtos. Verifique a internet e abra de novo.</div>');
+  }
+  if (S.gap) {
+    b.push('<div class="banner info">ℹ️ Algumas atualizações entre ' + fmtDataMs(S.gap.from) + ' e ' + fmtDataMs(S.gap.to) +
+      ' não foram copiadas porque o app ficou muito tempo sem abrir. A média desse período pode ficar menos precisa.</div>');
+  }
+  document.getElementById('banners').innerHTML = b.join('');
+}
+
+function renderInfo() {
+  let inicio = null;
+  Object.values(S.hist).forEach(d => Object.keys(d || {}).forEach(k => { if (!inicio || k < inicio) inicio = k; }));
+  const partes = [];
+  partes.push(inicio ? 'Histórico desde ' + fmtDia(inicio) : 'Sem histórico ainda');
+  partes.push('média de ' + S.cfg.janela + ' dias');
+  partes.push('lead time ' + fmtDec(S.cfg.lead).replace(',0', '') + ' d');
+  partes.push('alvo ' + S.cfg.alvo + ' d');
+  document.getElementById('infoLine').textContent = partes.join(' · ');
+}
+
+function renderChips(rows) {
+  const c = { hoje: 0, amanha: 0, ok: 0, nodata: 0 };
+  rows.forEach(x => {
+    const st = x.r.status === 'parado' ? 'nodata' : x.r.status;
+    c[st]++;
+  });
+  document.getElementById('cHoje').textContent = c.hoje;
+  document.getElementById('cAmanha').textContent = c.amanha;
+  document.getElementById('cOk').textContent = c.ok;
+  document.getElementById('cNodata').textContent = c.nodata;
+  document.querySelectorAll('.chip').forEach(el => el.classList.toggle('active', el.dataset.f === S.filtro));
+  document.getElementById('btnTodos').classList.toggle('active', !S.filtro);
+}
+
+function renderFamilias() {
+  const sel = document.getElementById('selFamilia');
+  const fams = Array.from(new Set(S.rows.map(x => x.cat).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  if (S.familia && fams.indexOf(S.familia) < 0) S.familia = '';
+  sel.innerHTML = '<option value="">Todas as famílias</option>' +
+    fams.map(f => '<option value="' + escapeHtml(f) + '"' + (f === S.familia ? ' selected' : '') + '>' + escapeHtml(f) + '</option>').join('');
+}
+
+function badge(r) {
+  if (r.status === 'hoje') return '<span class="badge hoje">🔴 Produzir hoje</span>';
+  if (r.status === 'amanha') return '<span class="badge amanha">🟡 Produzir amanhã</span>';
+  if (r.status === 'ok') return '<span class="badge ok">🟢 Iniciar até ' + addDias(r.iniciarEm) + '</span>';
+  if (r.status === 'parado') return '<span class="badge parado">⚪ Sem saída</span>';
+  return '<span class="badge nodata">⚪ Aguardando histórico</span>';
+}
+
+function detalhe(r) {
+  if (!r.series.length) return '<div class="nota">Nenhuma atualização de saldo registrada ainda para este produto.</div>';
+  const porFim = {};
+  r.ints.forEach(x => { porFim[x.to] = x; });
+  const linhas = r.series.slice(-12).reverse().map(p => {
+    const x = porFim[p.k];
+    let varTxt = '—';
+    if (x) {
+      if (!x.valido) varTxt = '<span class="pos">+' + fmtInt(-x.delta) + '</span> <span class="fora">entrada · fora da média</span>';
+      else {
+        const txt = x.delta === 0 ? '0' : '−' + fmtInt(x.delta);
+        varTxt = '<span class="' + (x.delta ? 'neg' : '') + '">' + txt + '</span>' +
+          (x.dias > 1 ? ' <span class="fora">em ' + x.dias + ' dias</span>' : '') +
+          (x.usado ? '' : ' <span class="fora">fora da janela</span>');
+      }
+    }
+    return '<tr><td>' + fmtDia(p.k) + '</td><td class="num">' + fmtInt(p.v) + '</td><td class="num">' + varTxt + '</td></tr>';
+  }).join('');
+  let nota = 'Saldo de cada dia = última atualização feita naquele dia.';
+  if (r.consumo != null) nota += ' Média calculada sobre ' + r.baseDias + (r.baseDias === 1 ? ' dia' : ' dias') + (r.baseAntiga ? ' (fora da janela, por falta de dados recentes)' : '') + '.';
+  return '<table><tr><th>Dia</th><th class="num">Saldo</th><th class="num">Variação</th></tr>' + linhas + '</table><div class="nota">' + nota + '</div>';
+}
+
+function card(x) {
+  const r = x.r;
+  const st = r.status;
+  let h = '<div class="card st-' + st + (S.abertos.has(x.k) ? ' open' : '') + '" data-k="' + escapeHtml(x.k) + '">';
+  h += '<div class="row1"><div><div class="nome">' + escapeHtml(x.name) + '</div>' +
+    (x.cat ? '<div class="fam">' + escapeHtml(x.cat) + '</div>' : '') + '</div>' + badge(r) + '</div>';
+
+  if (st === 'hoje' || st === 'amanha') {
+    h += '<div class="big">' + fmtInt(r.qtd) + '<small>un a produzir</small></div>';
+  } else if (st === 'ok') {
+    h += '<div class="big">~' + fmtInt(r.qtd) + '<small>un quando iniciar</small></div>';
+  }
+  if (r.falta > 0) {
+    h += '<div class="falta">⚠️ Vai faltar ~' + fmtInt(r.falta) + ' un antes da produção chegar</div>';
+  }
+
+  const m = [];
+  if (r.saldo != null) {
+    let s = 'Saldo <b>' + fmtInt(r.saldo) + '</b> (' + quando(r.diasSemAtualizar) + ')';
+    if (r.consumo > 0 && r.diasSemAtualizar > 0) s += ' → est. hoje <b>' + fmtInt(r.estimado) + '</b>';
+    m.push(s);
+  }
+  if (r.consumo != null) m.push('Consumo <b>' + fmtDec(r.consumo) + '</b>/dia');
+  if (r.cobertura === 0) m.push('<b>Sem estoque</b>');
+  else if (r.cobertura != null) m.push('Cobre <b>' + fmtDec(r.cobertura) + '</b> ' + (r.cobertura < 2 ? 'dia' : 'dias'));
+  if (r.motivo && (st === 'nodata' || st === 'parado')) m.push(escapeHtml(r.motivo));
+  h += '<div class="meta">' + m.map(t => '<span>' + t + '</span>').join('') + '</div>';
+
+  const av = [];
+  if (r.stale) av.push('Saldo sem atualização há ' + r.diasSemAtualizar + ' dias — peça contagem');
+  if (r.poucaBase && r.consumo > 0) av.push('Pouco histórico (' + r.baseDias + (r.baseDias === 1 ? ' dia' : ' dias') + '): média ainda instável');
+  if (av.length) h += '<div class="aviso">' + av.join('<br>') + '</div>';
+
+  h += '<div class="detail">' + detalhe(r) + '</div></div>';
+  return h;
+}
+
+function render() {
+  renderBanners();
+  renderInfo();
+  renderFamilias();
+  const porFamilia = S.rows.filter(x => !S.familia || x.cat === S.familia);
+  renderChips(porFamilia);
+  const lista = porFamilia.filter(x => {
+    if (!S.filtro) return true;
+    if (S.filtro === 'nodata') return x.r.status === 'nodata' || x.r.status === 'parado';
+    return x.r.status === S.filtro;
+  });
+  const el = document.getElementById('lista');
+  if (!S.rows.length) { el.innerHTML = '<div class="empty">Nenhum produto encontrado no estoque.</div>'; return; }
+  el.innerHTML = lista.length ? lista.map(card).join('') : '<div class="empty">Nenhum produto nesta seleção.</div>';
+}
+
+function setSync(state, txt) {
+  const dot = document.getElementById('syncDot');
+  dot.className = 'sync-dot' + (state ? ' ' + state : '');
+  document.getElementById('syncText').textContent = txt;
+}
+
+/* ============================================================
+   EVENTOS DA TELA
+   ============================================================ */
+document.querySelectorAll('.chip').forEach(el => el.addEventListener('click', () => {
+  S.filtro = S.filtro === el.dataset.f ? '' : el.dataset.f;
+  render();
+}));
+document.getElementById('btnTodos').addEventListener('click', () => { S.filtro = ''; render(); });
+document.getElementById('selFamilia').addEventListener('change', e => { S.familia = e.target.value; render(); });
+document.getElementById('lista').addEventListener('click', e => {
+  const c = e.target.closest('.card');
+  if (!c) return;
+  const k = c.dataset.k;
+  if (S.abertos.has(k)) S.abertos.delete(k); else S.abertos.add(k);
+  c.classList.toggle('open');
+});
+
+const ov = document.getElementById('cfgOverlay');
+document.getElementById('btnConfig').addEventListener('click', () => {
+  document.getElementById('cfgLead').value = S.cfg.lead;
+  document.getElementById('cfgAlvo').value = S.cfg.alvo;
+  document.getElementById('cfgJanela').value = S.cfg.janela;
+  ov.classList.add('open');
+});
+document.getElementById('cfgCancel').addEventListener('click', () => ov.classList.remove('open'));
+ov.addEventListener('click', e => { if (e.target === ov) ov.classList.remove('open'); });
+document.getElementById('cfgSave').addEventListener('click', () => {
+  const lead = parseFloat(String(document.getElementById('cfgLead').value).replace(',', '.'));
+  const alvo = parseFloat(String(document.getElementById('cfgAlvo').value).replace(',', '.'));
+  const janela = parseInt(document.getElementById('cfgJanela').value, 10);
+  if (!isFinite(lead) || lead < 0) return toast('Lead time inválido');
+  if (!isFinite(alvo) || alvo < 0) return toast('Estoque alvo inválido');
+  if (!isFinite(janela) || janela < 3 || janela > 90) return toast('Média: entre 3 e 90 dias');
+  S.cfg = { lead: lead, alvo: alvo, janela: janela };
+  saveCfg(S.cfg);
+  ov.classList.remove('open');
+  processar();
+  toast('Parâmetros salvos');
+});
+
+/* ============================================================
+   FIREBASE
+   ============================================================ */
+const firebaseConfig = {
+  apiKey: "AIzaSyBEQ0pAsCBdDbo2RwcQlmD3jx6HteKfNC4",
+  authDomain: "folha-de-ponto-xpro.firebaseapp.com",
+  databaseURL: "https://folha-de-ponto-xpro-default-rtdb.firebaseio.com",
+  projectId: "folha-de-ponto-xpro",
+  storageBucket: "folha-de-ponto-xpro.firebasestorage.app",
+  messagingSenderId: "988072192165",
+  appId: "1:988072192165:web:590e4f9ff775bb18a2454c"
+};
+
+let db = null;
+try {
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.database();
+} catch (e) {
+  console.error(e);
+  setSync('off', 'Erro ao iniciar o Firebase');
+  S.connErr = true;
+  renderBanners();
+}
+
+if (db) {
+  db.ref('.info/connected').on('value', s => {
+    if (s.val()) setSync('ok', S.lastDataAt ? 'Dados de ' + fmtHora(S.lastDataAt) : 'Conectado');
+    else setSync('off', 'Sem conexão' + (S.lastDataAt ? ' · dados de ' + fmtHora(S.lastDataAt) : ''));
+  });
+
+  // Histórico próprio (lido uma vez; depois é mantido aqui e gravado por diferença)
+  db.ref(HIST_PATH).once('value').then(snap => {
+    const v = snap.val() || {};
+    S.hist = v.diario || {};
+    S.meta = v.meta || {};
+  }).catch(err => {
+    console.warn('Sem acesso ao histórico:', err && err.message);
+    S.readBlocked = true;
+    S.hist = {}; S.meta = {};
+  }).then(() => {
+    S.histReady = true;
+    const marcar = () => {
+      S.lastDataAt = Date.now();
+      S.connErr = false;
+      setSync('ok', 'Dados de ' + fmtHora(S.lastDataAt));
+    };
+    const falha = err => {
+      console.warn('Falha ao ler estoque:', err && err.message);
+      S.connErr = true;
+      renderBanners();
+    };
+    db.ref('estoqueProdutos/items').on('value', s => { S.items = s.val() || []; marcar(); processar(); }, falha);
+    db.ref('estoqueProdutos/log').on('value', s => { S.log = s.val() || []; marcar(); processar(); }, falha);
+  });
+
+  // Android congela a conexão em segundo plano: força reconexão ao voltar
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      try { db.goOffline(); db.goOnline(); } catch (e) {}
+    }
+  });
+}
+</script>
+</body>
+</html>
